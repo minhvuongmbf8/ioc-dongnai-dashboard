@@ -34,8 +34,8 @@ BASE_SSO_DOMAIN = get_secret("SSO_DOMAIN", "https://tttm.dongnai.gov.vn")
 REPORT_ENDPOINT = get_secret(
     "REPORT_ENDPOINT", "https://tttm.dongnai.gov.vn/cmsapi/api/Report/overall2"
 )
-DEFAULT_USER = get_secret("SSO_USER", "quantri.binhphuoc")
-DEFAULT_PASS = get_secret("SSO_PASS", "Admin@1234")
+DEFAULT_USER = get_secret("SSO_USER", "")
+DEFAULT_PASS = get_secret("SSO_PASS", "")
 
 # ==============================================================================
 # 2. CẤU HÌNH TRANG & STYLESHEET IOC DARK THEME
@@ -223,7 +223,7 @@ now_str = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
 st.markdown(
     f"""
 <div class="ioc-header">
-    <div class="ioc-title">📡 IOC ĐỒNG NAI - GIÁM SÁT & ĐÔN ĐỐC HẠ TẦNG TRUYỀN THÔNG CƠ SỞ</div>
+    <div class="ioc-title">📡 IOC ĐỒNG NAI - GIÁM SÁT HẠ TẦNG TRUYỀN THÔNG CƠ SỞ</div>
     <div class="ioc-time">Thời gian đồng bộ dữ liệu: {now_str}</div>
 </div>
 """,
