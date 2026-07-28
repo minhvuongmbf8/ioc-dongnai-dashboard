@@ -3,11 +3,12 @@ import os
 from urllib.parse import parse_qs, urlparse
 import dotenv
 import pandas as pd
+import plotly.express as px
 import requests
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
 
-# Nạp các biến môi trường từ file .env
+# Nạp các biến môi trường từ file .env (nếu có ở local)
 dotenv.load_dotenv()
 
 
@@ -15,7 +16,7 @@ dotenv.load_dotenv()
 # 1. BẢO MẬT CONFIGS & HẰNG SỐ ẨN NGẦM (HIDDEN CONFIGS)
 # ==============================================================================
 def get_secret(key, default_val=""):
-    """Lấy biến môi trường an toàn, không gây sập app nếu thiếu secrets.toml"""
+    """Lấy biến môi trường an toàn từ st.secrets hoặc os.getenv"""
     try:
         if key in st.secrets:
             return st.secrets[key]
@@ -29,7 +30,6 @@ def get_secret(key, default_val=""):
     return default_val
 
 
-# MÁY CHỦ SSO VÀ ENDPOINT BÁO CÁO ĐÃ ĐƯỢC FIX CỨNG NGẦM (ẨN KHỎI UI)
 BASE_SSO_DOMAIN = get_secret("SSO_DOMAIN", "https://tttm.dongnai.gov.vn")
 REPORT_ENDPOINT = get_secret(
     "REPORT_ENDPOINT", "https://tttm.dongnai.gov.vn/cmsapi/api/Report/overall2"
@@ -78,14 +78,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Quản lý Session Token trong bộ nhớ
 if "final_jwt_token" not in st.session_state:
     st.session_state["final_jwt_token"] = ""
 if "token_expires_at" not in st.session_state:
     st.session_state["token_expires_at"] = None
 
 # ==============================================================================
-# 3. SIDEBAR - FORM ĐĂNG NHẬP GỌN (ĐÃ ẨN SSO DOMAIN & ENDPOINT)
+# 3. SIDEBAR - FORM ĐĂNG NHẬP GỌN (ĐÃ ẨN DOMAIN)
 # ==============================================================================
 with st.sidebar:
     st.title("🔑 ĐĂNG NHẬP HỆ THỐNG")
@@ -99,16 +98,12 @@ with st.sidebar:
             "⚡ Đăng nhập SSO", type="primary", use_container_width=True
         )
 
-    # Nút Xóa phiên làm việc (Logout)
     if st.session_state["final_jwt_token"]:
-        if st.button(
-            "🔒 Đăng Xuất (Xóa Session)", use_container_width=True
-        ):
+        if st.button("🔒 Đăng Xuất", use_container_width=True):
             st.session_state["final_jwt_token"] = ""
             st.session_state["token_expires_at"] = None
             st.rerun()
 
-    # Xử lý Logic xác thực SSO tự động theo Domain đã giấu ngầm
     if submit_login:
         base = BASE_SSO_DOMAIN.rstrip("/")
         payload = {"accountUserName": user_input, "accountPassword": pass_input}
@@ -119,7 +114,6 @@ with st.sidebar:
 
         with st.spinner("Đang xác thực bảo mật..."):
             try:
-                # Bước 1: Login
                 res_login = requests.post(
                     f"{base}/ssoapi/api/Accounts/Login",
                     json=payload,
@@ -136,7 +130,6 @@ with st.sidebar:
                     )
 
                     if l_token:
-                        # Bước 2: AllowedAccess
                         res_acc = requests.get(
                             f"{base}/ssoapi/api/Applications/AllowedAccess",
                             json=payload,
@@ -170,7 +163,6 @@ with st.sidebar:
                                     ).get("code", [None])[0]
 
                             if code_val:
-                                # Bước 3: Auth
                                 res_auth = requests.get(
                                     f"https://tttm.dongnai.gov.vn/cmsapi/api/Accounts/Auth?code={code_val}",
                                     json=payload,
@@ -202,13 +194,12 @@ with st.sidebar:
                         else:
                             st.error("Lỗi AllowedAccess!")
                     else:
-                        st.error("Không lấy được Token Đăng nhập ở Bước 1!")
+                        st.error("Không lấy được Token ở Bước 1!")
                 else:
-                    st.error("Lỗi Đăng nhập SSO! Vui lòng kiểm tra lại tài khoản/mật khẩu.")
+                    st.error("Lỗi Đăng nhập! Kiểm tra lại tài khoản/mật khẩu.")
             except Exception as e:
                 st.error(f"❌ Lỗi kết nối: {e}")
 
-# Tự động hủy Token khi hết hạn
 if st.session_state["token_expires_at"]:
     if datetime.datetime.now() > st.session_state["token_expires_at"]:
         st.session_state["final_jwt_token"] = ""
@@ -223,14 +214,13 @@ now_str = datetime.datetime.now().strftime("%d-%m-%Y %H:%M")
 st.markdown(
     f"""
 <div class="ioc-header">
-    <div class="ioc-title">📡 IOC ĐỒNG NAI - GIÁM SÁT HẠ TẦNG TRUYỀN THÔNG CƠ SỞ</div>
+    <div class="ioc-title">📡 IOC ĐỒNG NAI - GIÁM SÁT & ĐÔN ĐỐC HẠ TẦNG TRUYỀN THÔNG CƠ SỞ</div>
     <div class="ioc-time">Thời gian đồng bộ dữ liệu: {now_str}</div>
 </div>
 """,
     unsafe_allow_html=True,
 )
 
-# THANH BỘ LỌC CẤP HÀNH CHÍNH & NÚT CẬP NHẬT
 col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns([2.5, 2, 2, 2, 1])
 
 with col_f1:
@@ -260,10 +250,10 @@ with col_f5:
 
 token_active = st.session_state.get("final_jwt_token", "")
 
-# KHU VỰC HIỂN THỊ DỮ LIỆU BÁO CÁO REALTIME
 if not token_active:
     st.error(
-        "🔒 Vui lòng mở Menu bên trái (Sidebar), nhập Tài khoản & Mật khẩu và bấm **⚡ Đăng nhập SSO** để kết nối hệ thống."
+        "🔒 Vui lòng mở Menu bên trái (Sidebar), nhập Tài khoản & Mật khẩu và"
+        " bấm **⚡ Đăng nhập SSO** để kết nối hệ thống."
     )
 else:
     params = {
@@ -306,7 +296,6 @@ else:
                 if paged_data:
                     df_raw = pd.DataFrame(paged_data)
 
-                    # Chuẩn hóa kiểu dữ liệu
                     for num_col in [
                         "totalRadioDevice",
                         "totalConnectRadioDevice",
@@ -320,7 +309,6 @@ else:
                                 df_raw[num_col], errors="coerce"
                             ).fillna(0)
 
-                    # Lọc nút cha tổng hợp để tránh nhân đôi số liệu
                     if "parentAreaId" in df_raw.columns and depth_option > 0:
                         df_calc = df_raw[df_raw["parentAreaId"].notnull()].copy()
                         if df_calc.empty:
@@ -328,7 +316,6 @@ else:
                     else:
                         df_calc = df_raw.copy()
 
-                    # BÓC TÁCH DỮ LIỆU ANALYTICS CỐT LÕI
                     total_units = len(df_calc)
                     invested_df = df_calc[df_calc["totalRadioDevice"] > 0]
                     uninvested_df = df_calc[df_calc["totalRadioDevice"] == 0]
@@ -426,18 +413,55 @@ else:
                         st.markdown(
                             "##### 🎯 Cơ cấu Tỷ lệ Phủ sóng Chuyển đổi số"
                         )
-                        structure_df = pd.DataFrame(
+
+                        # DỮ LIỆU VẼ BIỂU ĐỒ TRÒN
+                        pie_df = pd.DataFrame(
                             {
-                                "Đã trang bị cụm loa": [invested_count],
-                                "Chưa đầu tư (Vùng trống)": [uninvested_count],
+                                "Trạng Thái": [
+                                    "Đã trang bị cụm loa",
+                                    "Chưa đầu tư (Vùng trống)",
+                                ],
+                                "Số Lượng": [invested_count, uninvested_count],
+                            }
+                        )
+
+                        # VẼ BIỂU ĐỒ TRÒN DẠNG DONUT BẰNG PLOTLY
+                        fig = px.pie(
+                            pie_df,
+                            names="Trạng Thái",
+                            values="Số Lượng",
+                            color="Trạng Thái",
+                            color_discrete_map={
+                                "Đã trang bị cụm loa": "#10b981",
+                                "Chưa đầu tư (Vùng trống)": "#ef4444",
                             },
-                            index=["Số lượng đơn vị"],
+                            hole=0.4,
                         )
-                        st.bar_chart(
-                            structure_df,
+
+                        # HIỂN THỊ CẢ % VÀ SỐ LƯỢNG THỰC TẾ
+                        fig.update_traces(
+                            textinfo="percent+value",
+                            textfont_size=14,
+                            marker=dict(line=dict(color="#06101e", width=2)),
+                        )
+
+                        fig.update_layout(
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            font=dict(color="#e2e8f0"),
+                            showlegend=True,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=-0.2,
+                                xanchor="center",
+                                x=0.5,
+                            ),
+                            margin=dict(l=10, r=10, t=10, b=10),
                             height=330,
-                            color=["#10b981", "#ef4444"],
                         )
+
+                        st.plotly_chart(fig, use_container_width=True)
 
                     # --- 3. BẢNG CẢNH BÁO ĐÔN ĐỐC (THIẾT BỊ = 0) ---
                     st.divider()
