@@ -30,9 +30,9 @@ def get_secret(key, default_val=""):
     return default_val
 
 
-BASE_SSO_DOMAIN = get_secret("SSO_DOMAIN", "https://tttm.dongnai.gov.vn")
+BASE_SSO_DOMAIN = get_secret("SSO_DOMAIN", "")
 REPORT_ENDPOINT = get_secret(
-    "REPORT_ENDPOINT", "https://tttm.dongnai.gov.vn/cmsapi/api/Report/overall2"
+    "REPORT_ENDPOINT", ""
 )
 DEFAULT_USER = get_secret("SSO_USER", "")
 DEFAULT_PASS = get_secret("SSO_PASS", "")
@@ -432,30 +432,38 @@ else:
                             values="Số Lượng",
                             color="Trạng Thái",
                             color_discrete_map={
-                                "Đã trang bị cụm loa": "#10b981",
-                                "Chưa đầu tư (Vùng trống)": "#ef4444",
+                                "Đã trang bị cụm loa": "#10b981",  # Xanh lá tươi
+                                "Chưa đầu tư (Vùng trống)": "#ef4444",  # Đỏ nổi bật
                             },
                             hole=0.4,
                         )
 
-                        # HIỂN THỊ CẢ % VÀ SỐ LƯỢNG THỰC TẾ
+                        # CHỈNH MÀU CHỮ HIỂN THỊ TRÊN BIỂU ĐỒ (SỐ LƯỢNG & %)
                         fig.update_traces(
                             textinfo="percent+value",
-                            textfont_size=14,
+                            textfont=dict(
+                                color="#ffffff", size=14, family="Arial"
+                            ),  # Chữ màu trắng nổi bật
                             marker=dict(line=dict(color="#06101e", width=2)),
                         )
 
+                        # CHỈNH MÀU CHỮ CHÚ THÍCH (LEGEND) TRẮNG SÁNG & DỄ NHÌN
                         fig.update_layout(
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(color="#e2e8f0"),
+                            font=dict(
+                                color="#ffffff", size=13
+                            ),  # Chữ tổng thể màu trắng sáng
                             showlegend=True,
                             legend=dict(
                                 orientation="h",
                                 yanchor="bottom",
-                                y=-0.2,
+                                y=-0.25,
                                 xanchor="center",
                                 x=0.5,
+                                font=dict(
+                                    color="#8167f7", size=13
+                                ),  # Ép màu chữ chú thích thành màu trắng sáng
                             ),
                             margin=dict(l=10, r=10, t=10, b=10),
                             height=330,
