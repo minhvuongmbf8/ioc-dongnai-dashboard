@@ -164,7 +164,7 @@ with st.sidebar:
 
                             if code_val:
                                 res_auth = requests.get(
-                                    f"https://tttm.dongnai.gov.vn/cmsapi/api/Accounts/Auth?code={code_val}",
+                                    f"{base}/cmsapi/api/Accounts/Auth?code={code_val}",
                                     json=payload,
                                     headers=headers,
                                     timeout=15,
